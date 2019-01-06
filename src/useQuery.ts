@@ -3,7 +3,7 @@ import {
   ApolloQueryResult,
   FetchMoreOptions,
   FetchMoreQueryOptions,
-  FetchPolicy,
+  NetworkStatus,
   ObservableQuery,
   OperationVariables,
   QueryOptions,
@@ -21,7 +21,7 @@ import { Omit, objToKey } from './utils';
 export interface QueryHookState<TData>
   extends Pick<
     ApolloCurrentResult<undefined | TData>,
-    'error' | 'errors' | 'loading' | 'partial'
+    'error' | 'errors' | 'loading' | 'networkStatus' | 'partial'
   > {
   data?: TData;
 }
@@ -46,6 +46,13 @@ export interface QueryHookResult<TData, TVariables>
     fetchMoreOptions: FetchMoreQueryOptions<TVariables, K> &
       FetchMoreOptions<TData, TVariables>
   ): Promise<ApolloQueryResult<TData>>;
+}
+
+function isFetching(networkStatus: NetworkStatus) {
+  return (
+    networkStatus === NetworkStatus.loading ||
+    networkStatus === NetworkStatus.refetch
+  );
 }
 
 export function useQuery<TData = any, TVariables = OperationVariables>(
@@ -114,6 +121,7 @@ export function useQuery<TData = any, TVariables = OperationVariables>(
         error: result.error,
         errors: result.errors,
         loading: result.loading,
+        networkStatus: result.networkStatus,
         partial: result.partial,
       };
     },
@@ -141,8 +149,6 @@ export function useQuery<TData = any, TVariables = OperationVariables>(
     [skip, observableQuery]
   );
 
-  ensureSupportedFetchPolicy(suspend, fetchPolicy);
-
   const helpers = {
     fetchMore: observableQuery.fetchMore.bind(observableQuery),
     refetch: observableQuery.refetch.bind(observableQuery),
@@ -158,25 +164,18 @@ export function useQuery<TData = any, TVariables = OperationVariables>(
       data: undefined,
       error: undefined,
       loading: false,
+      networkStatus: 1, // initialLoading
     };
   }
 
   if (suspend && currentResult.partial) {
-    // throw a promise - use the react suspense to wait until the data is
-    // available
-    throw observableQuery.result();
+    // only throw promise if initialLoading or activelyRefetching
+    if (isFetching(currentResult.networkStatus)) {
+      // throw a promise - use the react suspense to wait until the data is
+      // available
+      throw observableQuery.result();
+    }
   }
 
   return { ...helpers, ...currentResult };
-}
-
-function ensureSupportedFetchPolicy(
-  suspend: boolean,
-  fetchPolicy?: FetchPolicy
-) {
-  if (suspend && fetchPolicy && fetchPolicy !== 'cache-first') {
-    throw new Error(
-      `Fetch policy ${fetchPolicy} is not supported without 'suspend: false'`
-    );
-  }
 }
