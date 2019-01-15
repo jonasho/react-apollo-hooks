@@ -1,5 +1,6 @@
 /es
 /node_modules
-/lib
+# /lib
 npm-debug.log*
 yarn-error.log*
+.history
