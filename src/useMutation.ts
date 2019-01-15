@@ -1,10 +1,9 @@
 import { DataProxy } from 'apollo-cache';
 import { MutationOptions, OperationVariables } from 'apollo-client';
-import { FetchResult } from 'apollo-link';
 import { DocumentNode } from 'graphql';
 
 import { useApolloClient } from './ApolloContext';
-import { Omit } from './utils';
+import { FetchResult, Omit } from './utils';
 
 export type MutationUpdaterFn<TData = Record<string, any>> = (
   proxy: DataProxy,
@@ -30,5 +29,6 @@ export function useMutation<TData, TVariables = OperationVariables>(
 ): MutationFn<TData, TVariables> {
   const client = useApolloClient();
 
-  return options => client.mutate({ mutation, ...baseOptions, ...options });
+  return options =>
+    (client as any).mutate({ mutation, ...baseOptions, ...options });
 }
