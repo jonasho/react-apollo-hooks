@@ -1,7 +1,11 @@
 import { ExecutionResult } from 'graphql/execution/execute';
 import isPlainObject from 'lodash.isplainobject';
 
-export declare type FetchResult<TData, C = Record<string, any>, E = Record<string, any>> = ExecutionResult<TData> & {
+export declare type FetchResult<
+  TData,
+  C = Record<string, any>,
+  E = Record<string, any>
+> = ExecutionResult<TData> & {
   extensions?: E;
   context?: C;
 };
@@ -19,4 +23,8 @@ export function objToKey<T extends Record<string, any>>(obj: T): T | string {
       return result;
     }, {});
   return JSON.stringify(sortedObj);
+}
+
+export function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
+  return value != null && typeof (value as PromiseLike<T>).then === 'function';
 }
