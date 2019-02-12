@@ -3,6 +3,13 @@ import { DocumentNode } from 'graphql';
 import { Omit } from './utils';
 export interface QueryHookState<TData> extends Pick<ApolloCurrentResult<undefined | TData>, 'error' | 'errors' | 'loading' | 'networkStatus' | 'partial'> {
     data?: TData;
+    status: {
+        initialLoading: boolean;
+        activelyRefetching: boolean;
+        passivelyRefetching: boolean;
+        fetchingMore: boolean;
+        error: boolean;
+    };
 }
 export interface QueryHookOptions<TVariables> extends Omit<QueryOptions<TVariables>, 'query'> {
     notifyOnNetworkStatusChange?: boolean;

@@ -4,6 +4,7 @@ import {
   ApolloQueryResult,
   FetchMoreOptions,
   FetchMoreQueryOptions,
+  NetworkStatus,
   ObservableQuery,
   OperationVariables,
   QueryOptions,
@@ -25,6 +26,13 @@ export interface QueryHookState<TData>
     'error' | 'errors' | 'loading' | 'networkStatus' | 'partial'
   > {
   data?: TData;
+  status: {
+    initialLoading: boolean;
+    activelyRefetching: boolean;
+    passivelyRefetching: boolean;
+    fetchingMore: boolean;
+    error: boolean;
+  };
 }
 
 export interface QueryHookOptions<TVariables>
@@ -50,12 +58,23 @@ export interface QueryHookResult<TData, TVariables>
   ): Promise<ApolloQueryResult<TData>>;
 }
 
-// function isFetching(networkStatus: NetworkStatus) {
-//   return (
-//     networkStatus === NetworkStatus.loading ||
-//     networkStatus === NetworkStatus.refetch
-//   );
-// }
+const isInitialLoading = (networkStatus: NetworkStatus) => networkStatus === 1;
+const isActivelyRefetching = (networkStatus: NetworkStatus) =>
+  networkStatus === 4;
+const isPassivelyRefetching = (networkStatus: NetworkStatus) =>
+  networkStatus === 2 || networkStatus === 6;
+const isFetchingMore = (networkStatus: NetworkStatus) => networkStatus === 3;
+
+// Error States
+const isError = (networkStatus: NetworkStatus) => networkStatus === 8;
+
+const buildStatus = (networkStatus: NetworkStatus) => ({
+  initialLoading: isInitialLoading(networkStatus),
+  activelyRefetching: isActivelyRefetching(networkStatus),
+  passivelyRefetching: isPassivelyRefetching(networkStatus),
+  fetchingMore: isFetchingMore(networkStatus),
+  error: isError(networkStatus),
+});
 
 export function useQuery<TData = any, TVariables = OperationVariables>(
   query: DocumentNode,
@@ -63,17 +82,17 @@ export function useQuery<TData = any, TVariables = OperationVariables>(
     // Hook options
     ssr = true,
     skip = false,
-    suspend = true,
+    suspend = false,
 
     // Watch options
     pollInterval,
-    notifyOnNetworkStatusChange = false,
+    notifyOnNetworkStatusChange = true,
 
     // Apollo client options
     context,
     metadata,
     variables,
-    fetchPolicy: actualCachePolicy,
+    fetchPolicy: actualCachePolicy = 'cache-and-network',
     errorPolicy,
     fetchResults,
   }: QueryHookOptions<TVariables> = {}
@@ -141,6 +160,7 @@ export function useQuery<TData = any, TVariables = OperationVariables>(
         loading: result.loading,
         networkStatus: result.networkStatus,
         partial: result.partial,
+        status: buildStatus(result.networkStatus),
       };
     },
     [shouldSkip, responseId, observableQuery]
@@ -183,6 +203,7 @@ export function useQuery<TData = any, TVariables = OperationVariables>(
       error: undefined,
       loading: false,
       networkStatus: 1, // initialLoading
+      status: buildStatus(1),
     };
   }
 
