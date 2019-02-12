@@ -1,5 +1,6 @@
 import {
   ApolloCurrentResult,
+  ApolloError,
   ApolloQueryResult,
   FetchMoreOptions,
   FetchMoreQueryOptions,
@@ -16,7 +17,7 @@ import {
   getCachedObservableQuery,
   invalidateCachedObservableQuery,
 } from './queryCache';
-import { Omit, objToKey } from './utils';
+import { Omit, compact, objToKey } from './utils';
 
 export interface QueryHookState<TData>
   extends Pick<
@@ -92,17 +93,18 @@ export function useQuery<TData = any, TVariables = OperationVariables>(
       : actualCachePolicy;
 
   const watchQueryOptions: WatchQueryOptions<TVariables> = useMemo(
-    () => ({
-      context,
-      errorPolicy,
-      fetchPolicy,
-      fetchResults,
-      metadata,
-      notifyOnNetworkStatusChange,
-      pollInterval,
-      query,
-      variables,
-    }),
+    () =>
+      compact({
+        context,
+        errorPolicy,
+        fetchPolicy,
+        fetchResults,
+        metadata,
+        notifyOnNetworkStatusChange,
+        pollInterval,
+        query,
+        variables,
+      }),
     [
       query,
 
@@ -117,7 +119,6 @@ export function useQuery<TData = any, TVariables = OperationVariables>(
       fetchResults,
     ]
   );
-
   const observableQuery = useMemo(
     () =>
       getCachedObservableQuery<TData, TVariables>(client, watchQueryOptions),
@@ -132,7 +133,10 @@ export function useQuery<TData = any, TVariables = OperationVariables>(
 
       return {
         data: result.data as TData,
-        error: result.error,
+        error:
+          result.errors && result.errors.length > 0
+            ? new ApolloError({ graphQLErrors: result.errors })
+            : result.error,
         errors: result.errors,
         loading: result.loading,
         networkStatus: result.networkStatus,
